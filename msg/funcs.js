@@ -12,14 +12,13 @@ var safeJSONparse = function(str) {
 }
 
 var clientMsg = function(msgObj, ws, mc) {
-  console.log(msgObj)
   mc.send(msgObj.msg);  
   if(msgObj.msg && msgObj.msg.type === "pm"){
      msddb.saveMsg(msgObj.msg); 
   }
 }
 var setNetwork = function(msgObj, ws, mc) {
-  
+  netconf.setNetwork(msgObj.nwObj) 
 }
 var getNetwork = function(msgObj, ws, mc) {
   
@@ -49,6 +48,24 @@ var query = function(msgObj, ws, mc){
   }
   netconf.fetchNetconf(addTab);
 }
+var close = function(msgObj, ws, mc){
+  var network = msgObj.network   
+  var receiver = msgObj.receiver   
+  var onRemove = function(err) {
+    if (receiver.startsWith("#")) {
+      mc.safePart(receiver, network)
+    } 
+    var sendSession = function(tabs) {
+      var msgObj = {
+        type: "load_session", 
+        tabs: tabs 
+      }
+      ws.send(JSON.stringify(msgObj))
+    }
+    tabconf.fetchTabConf(sendSession);
+  } 
+  tabconf.removeTab(msgObj, onRemove) 
+}
 
 var join = function(msgObj, ws, mc){
   var network = msgObj.network   
@@ -67,20 +84,31 @@ var join = function(msgObj, ws, mc){
 
     var myNick = nc[network].nick   
     mc.safeJoin(channel, network);
-    tabconf.setTab({
-      network: network, nick: myNick, receiver: channel, type: "channel", filter: ""
-    },
-    saveCB
-    )
 
+    tabconf.setTab({
+      network: network, 
+      nick: myNick, 
+      receiver: channel, 
+      type: "channel", 
+      filter: ""
+      },
+      saveCB
+    )
   }
   netconf.fetchNetconf(addTab);
+}
+
+var removeNetwork = function(msgObj, ws, mc){
+  const name = msgObj.name  
+  netconf.removeNetwork(name)
 }
 
 var dispatchMap = {
   msg: clientMsg,
   query: query,
   join: join,
+  remove_network: removeNetwork,
+  close: close,
   set_network: setNetwork,
   get_network: getNetwork
   }

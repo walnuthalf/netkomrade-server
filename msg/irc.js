@@ -54,6 +54,17 @@ class MultinetClient{
       console.log("failed to join " + channel) 
     }
   }
+
+  safePart(channel, network){
+    try {
+      this.nameToClient[network].part(channel)
+    }
+    catch(e) {
+      console.log("failed to part " + channel) 
+    }
+    
+  }
+
   onConnect(name, conf) {
     return function(msg) {
       if(conf.password)

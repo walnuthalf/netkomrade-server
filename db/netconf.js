@@ -38,5 +38,10 @@ var setNetwork = function(nwObj){
   Netconf.findOne({name: name}, processNw);
 }
 
+var removeNetwork = function(name){
+  Netconf.remove({name: name})
+}
+
 exports.setNetwork = setNetwork;
+exports.removeNetwork = removeNetwork;
 exports.fetchNetconf = fetchNetconf;

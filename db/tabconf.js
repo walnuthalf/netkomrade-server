@@ -27,5 +27,13 @@ var setTab = function(tabObj, callback){
   }).remove(process);
 }
 
+var removeTab = function(tabObj, callback){
+  TabEntry.find({
+    network: tabObj.network, 
+    receiver: tabObj.receiver
+  }).remove(callback);
+}
+
+exports.removeTab = removeTab;
 exports.setTab = setTab;
 exports.fetchTabConf = fetchTabConf;
