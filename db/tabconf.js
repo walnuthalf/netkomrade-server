@@ -1,39 +1,47 @@
 var db = require("./mongo.js")
+var netconf = require("./netconf.js")
 var mongoose = require('mongoose');
 
-var tabEntrySchema = mongoose.Schema(
-  {network: String, nick: String,  
-   receiver: String, filter: String
-  });
+var tabSchema = mongoose.Schema({
+  network: String,
+  receiver: String, 
+  filter: String
+});
 
-var TabEntry = mongoose.model("TabEntry", tabEntrySchema);
+var Tab = mongoose.model("Tab", tabSchema);
 
-var fetchTabConf = function(resfunc){
-  var process = function(err, entries) {
-    resfunc(entries)
+function getAllTabs(tab){
+  return Tab.find({})
+}
+function allTabs(){
+  return Tab.find({})
+}
+function removeThenAll(network, receiver){
+  var tabObj = {
+    network: network,  
+    receiver: receiver,
+    filter: ""
   }
-  TabEntry.find({}, process);
-} 
-
-var setTab = function(tabObj, callback){
-  var process = function(err) {
-      var tabentry = new TabEntry(tabObj);
-      tabentry.save(callback);
-  }
-  // remove old tab entries
-  TabEntry.find({
-    network: tabObj.network, 
-    receiver: tabObj.receiver
-  }).remove(process);
+  return Tab.remove(tabObj)
+    .then(getAllTabs) 
 }
 
-var removeTab = function(tabObj, callback){
-  TabEntry.find({
-    network: tabObj.network, 
-    receiver: tabObj.receiver
-  }).remove(callback);
+function makeThenAll(network, receiver){
+  var tabObj = {
+    network: network,  
+    receiver: receiver,
+    filter: ""
+  }
+
+  function newAndAll(t){
+    return (new Tab(tabObj))
+      .save()
+      .then(getAllTabs)
+    
+  }
+  return Tab.remove(tabObj).then(newAndAll)
 }
 
-exports.removeTab = removeTab;
-exports.setTab = setTab;
-exports.fetchTabConf = fetchTabConf;
+exports.makeThenAll = makeThenAll;;
+exports.removeThenAll = removeThenAll;;
+exports.allTabs = allTabs;;

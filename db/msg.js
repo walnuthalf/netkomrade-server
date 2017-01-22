@@ -8,7 +8,6 @@ var msgSchema = mongoose.Schema(
 
 var Msg = mongoose.model("Msg", msgSchema);
 
-
 var saveMsg = function(msg){
   var msgDoc = new Msg(msg); 
   msgDoc.save()

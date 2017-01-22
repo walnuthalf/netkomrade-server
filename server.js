@@ -4,7 +4,7 @@ var https = require('https')
 
 var mfuncs = require("./msg/funcs.js")  
 var config = require("./config/main.js")
-var tabfuncs = require("./db/tabconf.js")
+var session = require("./db/session.js")
 var ircClient = require("./msg/irc.js")
 
 // https setup
@@ -37,15 +37,7 @@ function connection(ws) {
       && msgObj.pass == config.pass) {
       gws.ws = ws
       mfuncs.onClientMsg(gws, gmc);
-
-      var sendSession = function(tabs) {
-        var msgObj = {
-          type: "load_session", 
-          tabs: tabs 
-        }
-        ws.send(JSON.stringify(msgObj))
-      }
-      tabfuncs.fetchTabConf(sendSession);
+      session.sendSession(ws)      
     }
   }
   ws.on('message', incoming);

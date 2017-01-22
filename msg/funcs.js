@@ -1,6 +1,8 @@
 var tabconf = require("../db/tabconf.js")
 var netconf = require("../db/netconf.js")
 var msgdb = require("../db/msg.js")
+var misc = require("../db/misc.js")
+var mirc = require("../msg/irc.js")
 
 var safeJSONparse = function(str) {
   try {
@@ -11,96 +13,98 @@ var safeJSONparse = function(str) {
   }
 }
 
-var clientMsg = function(msgObj, ws, mc) {
+function clientMsg(msgObj, ws, mc) {
   mc.send(msgObj.msg);  
-  if(msgObj.msg && msgObj.msg.type === "pm"){
-     msddb.saveMsg(msgObj.msg); 
-  }
+  msgdb.saveMsg(msgObj.msg); 
 }
-var setNetwork = function(msgObj, ws, mc) {
-  netconf.setNetwork(msgObj.nwObj) 
-}
-var getNetwork = function(msgObj, ws, mc) {
-  
-}
-var query = function(msgObj, ws, mc){
-  var network = msgObj.network   
-  var nick = msgObj.nick   
-  var addTab = function(nc) {
-    var saveCB = function(err) {
-      var sendSession = function(tabs) {
-        var msgObj = {
-          type: "load_session", 
-          tabs: tabs 
-        }
-        ws.send(JSON.stringify(msgObj))
-      }
-      tabconf.fetchTabConf(sendSession);
+
+function genSendTabs(network, receiver, ws) {
+  return function(tabs) {
+    misc.setActTab(network, receiver)
+    var msgObj = {
+      type: "send_tabs",
+      tabs: tabs,
+      actTab: {network: network, receiver: receiver}
     }
-
-    var myNick = nc[network].nick   
-    tabconf.setTab({
-      network: network, nick: myNick, receiver: nick, type: "pm", filter: ""
-    },
-    saveCB
-    )
-
+    ws.send(JSON.stringify(msgObj));
   }
-  netconf.fetchNetconf(addTab);
 }
-var close = function(msgObj, ws, mc){
+
+function genSendTabsActFirst(ws) {
+  return function(tabs) {
+    var network = ""
+    var receiver = ""
+    var actTab = false;
+    if (tabs.length > 0){
+      network = tabs[0].network, 
+      receiver = tabs[0].receiver
+      actTab = {
+        network: network, 
+        receiver: receiver
+      }
+    }
+    var msgObj = {
+      type: "send_tabs",
+      tabs: tabs,
+      actTab: actTab
+      }
+    ws.send(JSON.stringify(msgObj));
+  }
+}
+function query(msgObj, ws, mc){
+  var network = msgObj.network   
+  var receiver = msgObj.receiver
+
+  tabconf.makeThenAll(network, receiver)
+    .then(genSendTabs(network, receiver, ws))
+}
+
+function close(msgObj, ws, mc){
   var network = msgObj.network   
   var receiver = msgObj.receiver   
-  var onRemove = function(err) {
-    if (receiver.startsWith("#")) {
-      mc.safePart(receiver, network)
-    } 
-    var sendSession = function(tabs) {
-      var msgObj = {
-        type: "load_session", 
-        tabs: tabs 
-      }
-      ws.send(JSON.stringify(msgObj))
-    }
-    tabconf.fetchTabConf(sendSession);
+  if (receiver && receiver.startsWith("#")) {
+    mc.safePart(receiver, network)
   } 
-  tabconf.removeTab(msgObj, onRemove) 
+  tabconf.removeThenAll(network, receiver)
+    .then(genSendTabsActFirst(ws))
 }
 
-var join = function(msgObj, ws, mc){
+function join(msgObj, ws, mc){
   var network = msgObj.network   
-  var channel = msgObj.channel   
-  var addTab = function(nc) {
-    var saveCB = function(err) {
-      var sendSession = function(tabs) {
-        var msgObj = {
-          type: "load_session", 
-          tabs: tabs 
-        }
-        ws.send(JSON.stringify(msgObj))
-      }
-      tabconf.fetchTabConf(sendSession);
-    }
+  var receiver = msgObj.receiver   
 
-    var myNick = nc[network].nick   
-    mc.safeJoin(channel, network);
-
-    tabconf.setTab({
-      network: network, 
-      nick: myNick, 
-      receiver: channel, 
-      type: "channel", 
-      filter: ""
-      },
-      saveCB
-    )
-  }
-  netconf.fetchNetconf(addTab);
+  mc.safeJoin(receiver, network);
+  tabconf.makeThenAll(network, receiver)
+    .then(genSendTabs(network, receiver, ws))
 }
 
-var removeNetwork = function(msgObj, ws, mc){
+function removeNetwork(msgObj, ws, mc){
+  function onAll(netconfs){
+    var msgObj = {
+      type: "send_nets",
+      netconfs: netconfs
+      }
+    ws.send(JSON.stringify(msgObj));
+  }
   const name = msgObj.name  
-  netconf.removeNetwork(name)
+  netconf.removeThenAll(name)
+    .then(genSendNetconfs(ws)) 
+}
+
+function genSendNetconfs(ws) {
+  return function(netconfs){
+    var msgObj = {
+      type: "set_networks",
+      netconfs: netconfs
+    }
+    ws.send(JSON.stringify(msgObj))
+  } 
+}
+
+function setNetwork(msgObj, ws, mc) {
+  mc.connectToNetwork(msgObj.nwObj)
+  netconf.makeThenAll(msgObj.nwObj)
+    .then(genSendNetconfs(ws))
 }
 
 var dispatchMap = {
@@ -109,19 +113,25 @@ var dispatchMap = {
   join: join,
   remove_network: removeNetwork,
   close: close,
-  set_network: setNetwork,
-  get_network: getNetwork
-  }
+  set_network: setNetwork
+}
 
 var onClientMsg = function(gws, gmc) {
   var processMsg = function(msg) {
     var msgObj = safeJSONparse(msg);
     if (msgObj && msgObj.type && msgObj.type in dispatchMap)
     {
-      dispatchMap[msgObj.type](msgObj, gws.ws, gmc.client)   
+      // try{
+        dispatchMap[msgObj.type](msgObj, gws.ws, gmc.client)   
+      // }
+      // catch(e){
+      //  console.log(e)
+      // }
     }
   };
   gws.ws.on('message', processMsg);
 }
+
+
 exports.safeJSONparse = safeJSONparse;
 exports.onClientMsg = onClientMsg;
