@@ -12,5 +12,12 @@ var saveMsg = function(msg){
   var msgDoc = new Msg(msg); 
   msgDoc.save()
 }
-
+function pastDayMsgs(){
+  var yesterday = new Date(new Date().getTime() - (24 * 60 * 60 * 1000));
+  return Msg.find({
+    receivedAt: {
+      $gt: yesterday 
+    }})  
+}
 exports.saveMsg = saveMsg;
+exports.pastDayMsgs = pastDayMsgs;

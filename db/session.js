@@ -1,5 +1,6 @@
 var netconf = require("./netconf.js")  
 var tabconf = require("./tabconf.js")  
+var msg = require("./msg.js")  
 var misc = require("./misc.js")  
 
 function sendSession(ws){
@@ -10,6 +11,10 @@ function sendSession(ws){
   }
   function addNets(netconfs){
     msgObj.netconfs = netconfs
+    return msg.pastDayMsgs()
+  }
+  function addMsgs(msgs){
+    msgObj.msgs = msgs    
     return misc.getByName("actTab") 
   }
   function addActTab(actTab){
@@ -24,6 +29,7 @@ function sendSession(ws){
   return tabconf.allTabs()
     .then(addTabs)   
     .then(addNets)
+    .then(addMsgs)
     .then(addActTab)
 }
 
