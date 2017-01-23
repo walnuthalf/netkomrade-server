@@ -1,5 +1,5 @@
 # netkomrade-server
-Node.js server for Netkomrade
+Node.js server for Netkomrade, extensible IRC client/bot with persitent session settings similar to IRCcloud.
 
 # Installation instructions
 - install MongoDB
