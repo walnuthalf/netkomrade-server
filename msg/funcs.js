@@ -107,13 +107,28 @@ function setNetwork(msgObj, ws, mc) {
     .then(genSendNetconfs(ws))
 }
 
+function setActTab(msgObj, ws, mc){
+  function onSet(actTab){
+    var serverMsg = {
+      type: "set_acttab",
+      network: msgObj.network,
+      receiver: msgObj.receiver
+    }
+    ws.send(JSON.stringify(serverMsg))
+  }
+  let network = msgObj.network 
+  let receiver = msgObj.receiver
+  misc.setActTab(network, receiver).then(onSet)
+}
+
 var dispatchMap = {
   msg: clientMsg,
   query: query,
   join: join,
   remove_network: removeNetwork,
   close: close,
-  set_network: setNetwork
+  set_network: setNetwork,
+  set_acttab: setActTab
 }
 
 var onClientMsg = function(gws, gmc) {
