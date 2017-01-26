@@ -5,28 +5,38 @@ var msgFuncs = require("../db/msg.js")
 class MultinetClient{
   constructor(netconfs, gws){
     this.nwToClient = {};
+    this.stMap = {}
     this.gws = gws
-    netconfs.forEach(nc =>
+    netconfs.forEach(nc =>{
       this.connectToNetwork(nc)
+    }
     )
   }
 
   connectToNetwork(netconf){
-    var ircConf = {port: netconf.port, secure: true }
+    var ircConf = {
+      port: netconf.port, 
+      secure: true
+    }
     var client = new irc.Client(
       netconf.address, 
       netconf.nick, 
       ircConf
     );
-
     var network = netconf.name;
-    client.addListener("message", 
-      this.genOnMsg(network).bind(this))
 
     client.addListener('registered', 
       this.onConnect(netconf).bind(this));
-
     this.nwToClient[network] = client;
+  }
+  connectAsync(netconf){
+    let connect = this.connectToNetwork.bind(this)
+    return new Promise(
+      function(resolve, reject) { 
+        connect(netconf);
+        resolve()
+      }
+    )
   }
 
   genOnMsg(network) {
@@ -74,10 +84,13 @@ class MultinetClient{
   }
 
   onConnect(netconf) {
-    return function(msg) {
+    return msg => {
+      let client = this.nwToClient[netconf.name]
+      let onMsg  = this.genOnMsg(netconf.name).bind(this)
+      this.stMap[netconf.name] = true
+      client.addListener("message", onMsg)
       if(netconf.password)
       {
-        var client = this.nwToClient[netconf.name];
         client.say("nickserv", "identify " + netconf.password); 
       }
     }

@@ -37,7 +37,7 @@ function connection(ws) {
       && msgObj.pass == config.pass) {
       gws.ws = ws
       mfuncs.onClientMsg(gws, gmc);
-      session.sendSession(ws)      
+      session.sendSession(gws, gmc)      
     }
   }
   ws.on('message', incoming);
