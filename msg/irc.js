@@ -24,7 +24,11 @@ class MultinetClient{
       ircConf
     );
     var network = netconf.name;
-
+    client.addListener("error", 
+      function(msg) {
+        console.log(msg)
+      }
+    )
     client.addListener('registered', 
       this.onConnect(netconf).bind(this));
     this.nwToClient[network] = client;

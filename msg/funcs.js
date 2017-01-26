@@ -21,9 +21,16 @@ function sendError(text, ws){
 }
 function clientMsg(msgObj, ws, mc) {
   const network = msgObj.msg.network
+  const receiver = msgObj.msg.to
   if(mc.stMap[network]){
-    mc.send(msgObj.msg);  
-    msgdb.saveMsg(msgObj.msg); 
+    const chans = mc.nwToClient[network].chans
+    if(!receiver.startsWith("#") || receiver in chans) {
+      mc.send(msgObj.msg);  
+      msgdb.saveMsg(msgObj.msg); 
+    }
+    else{
+      sendError("have NOT joined " + receiver, ws)
+    }
   }
   else{
     sendError("not connected to " + network, ws)
